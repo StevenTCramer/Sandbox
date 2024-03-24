@@ -1,0 +1,73 @@
+@using FluentValidation
+@using Record.Editor.Pages
+@inject IServiceProvider ServiceProvider
+
+<InputText @bind-Value="currentValue" class="form-control" />
+@if (validationMessages.Any())
+{
+    foreach (var message in validationMessages)
+    {
+        <div class="text-danger">@message</div>
+    }
+}
+
+@code {
+    private string currentValue;
+    private List<string> validationMessages = new();
+
+    [Parameter]
+    public Email Value { get; set; }
+
+    [Parameter]
+    public EventCallback<Email> ValueChanged { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        currentValue = Value.Value;
+    }
+
+    private async Task HandleValueChanged(string newValue)
+    {
+        currentValue = newValue;
+        var email = new Email(currentValue);
+        if (ValidateEmail(email))
+        {
+            await ValueChanged.InvokeAsync(email);
+        }
+    }
+
+    private bool ValidateEmail(Email email)
+    {
+        var validator = ServiceProvider.GetService<EmailValidator>();
+        var result = validator?.Validate(email) ?? new FluentValidation.Results.ValidationResult();
+        
+        validationMessages.Clear();
+        if (!result.IsValid)
+        {
+            validationMessages.AddRange(result.Errors.Select(e => e.ErrorMessage));
+            return false;
+        }
+        return true;
+    }
+
+    // Watch for changes to currentValue and handle them.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Value.Value != currentValue)
+        {
+            currentValue = Value.Value;
+            await HandleValueChanged(currentValue);
+        }
+    }
+
+    // Update currentValue with debouncing to limit re-validation while typing
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        currentValue = e.Value?.ToString();
+        await Task.Delay(300); // Simple debounce
+        if (currentValue == e.Value?.ToString())
+        {
+            await HandleValueChanged(currentValue);
+        }
+    }
+}
