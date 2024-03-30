@@ -1,0 +1,65 @@
+﻿@page "/"
+
+<PageTitle>Index</PageTitle>
+
+<div>AutoCompleteValue:@AutoCompleteValue</div>
+
+<SfAutoComplete 
+  @ref="autocompleteObj"
+  TValue="string" 
+  TItem="Country" 
+  Placeholder="e.g. Australia" 
+  DataSource="@LocalData" 
+  @bind-value=AutoCompleteValue
+>
+  <AutoCompleteFieldSettings Value=Code Text=Name />
+  <AutoCompleteEvents TItem=Country TValue="string" Filtering="onFlitering"></AutoCompleteEvents> 
+</SfAutoComplete>
+
+<div>ComboBoxValue:@ComboBoxValue</div>
+<SfComboBox 
+  TValue="string" 
+  TItem="Country" 
+  PopupHeight="230px" 
+  Placeholder="e.g. Canada" 
+  DataSource="@LocalData"
+  AllowFiltering=true
+  @bind-Value="@ComboBoxValue" 
+>
+  <ComboBoxFieldSettings Value=Code Text=Name />
+</SfComboBox>
+
+@code {
+  SfAutoComplete<string, Country> autocompleteObj;
+  public string ComboBoxValue { get; set; } = "AU";
+  public string AutoCompleteValue { get; set; }
+  public class Country
+  {
+    public string Name { get; set; }
+    public string Code { get; set; }
+  }
+
+  List<Country> LocalData = new List<Country>
+  {
+    new Country() { Name = "Australia", Code = "AU" },
+    new Country() { Name = "Bermuda", Code = "BM" },
+    new Country() { Name = "Canada", Code = "CA" },
+    new Country() { Name = "Cameroon", Code = "CM" },
+    new Country() { Name = "Denmark", Code = "DK" }
+  };
+
+  public async Task onFlitering(FilteringEventArgs e)
+  {
+    e.PreventDefaultAction = true;
+    var query = new Query().Where(new WhereFilter()
+      {
+        Field = "Code",
+        value = e.Text,
+        Operator = "contains",
+        IgnoreCase = true
+      });
+
+    await autocompleteObj.FilterAsync(LocalData, query);
+
+  }
+}

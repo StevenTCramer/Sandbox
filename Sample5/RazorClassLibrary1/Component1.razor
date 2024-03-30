@@ -1,0 +1,17 @@
+﻿@rendermode InteractiveAuto
+
+<div class="my-component">
+    This component is defined in the <strong>RazorClassLibrary1</strong> library.
+</div>
+
+@code{
+  protected override void OnInitialized()
+  {
+    Console.WriteLine("Component1.OnInitialized");
+  }
+
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    await base.OnAfterRenderAsync(firstRender);
+  }
+}

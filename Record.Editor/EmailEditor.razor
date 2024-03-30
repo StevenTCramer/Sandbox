@@ -1,73 +1,45 @@
+@inherits BaseEditor<Email>
 @using FluentValidation
-@using Record.Editor.Pages
 @inject IServiceProvider ServiceProvider
 
-<InputText @bind-Value="currentValue" class="form-control" />
-@if (validationMessages.Any())
-{
-    foreach (var message in validationMessages)
-    {
-        <div class="text-danger">@message</div>
-    }
-}
+<InputText type="@ControlName" id="@ControlId" @bind-Value="@ProxyValue" class="form-control" readonly="@IsReadOnly" />
 
 @code {
-    private string currentValue;
-    private List<string> validationMessages = new();
+    private string _proxyValue;
 
-    [Parameter]
-    public Email Value { get; set; }
+    public override string ControlName => "email";
 
-    [Parameter]
-    public EventCallback<Email> ValueChanged { get; set; }
+    // This property acts as a proxy for the actual immutable Email record
+    private string ProxyValue
+    {
+        get => _proxyValue;
+        set
+        {
+            if (_proxyValue != value)
+            {
+                _proxyValue = value;
+                var newEmail = new Email(value);
+                if (ValidateEmail(newEmail))
+                {
+                    Value = newEmail; // Only update the Value if the new value is valid
+                    ValueChanged.InvokeAsync(newEmail);
+                }
+            }
+        }
+    }
 
     protected override void OnParametersSet()
     {
-        currentValue = Value.Value;
-    }
-
-    private async Task HandleValueChanged(string newValue)
-    {
-        currentValue = newValue;
-        var email = new Email(currentValue);
-        if (ValidateEmail(email))
-        {
-            await ValueChanged.InvokeAsync(email);
-        }
+        _proxyValue = Value?.Value ?? string.Empty;
     }
 
     private bool ValidateEmail(Email email)
     {
-        var validator = ServiceProvider.GetService<EmailValidator>();
-        var result = validator?.Validate(email) ?? new FluentValidation.Results.ValidationResult();
-        
-        validationMessages.Clear();
-        if (!result.IsValid)
-        {
-            validationMessages.AddRange(result.Errors.Select(e => e.ErrorMessage));
-            return false;
-        }
-        return true;
-    }
+        var validator = ServiceProvider.GetService<EmailValidator>() ?? new EmailValidator();
+        var result = validator.Validate(email);
 
-    // Watch for changes to currentValue and handle them.
-    protected override async Task OnParametersSetAsync()
-    {
-        if (Value.Value != currentValue)
-        {
-            currentValue = Value.Value;
-            await HandleValueChanged(currentValue);
-        }
-    }
-
-    // Update currentValue with debouncing to limit re-validation while typing
-    private async Task OnInput(ChangeEventArgs e)
-    {
-        currentValue = e.Value?.ToString();
-        await Task.Delay(300); // Simple debounce
-        if (currentValue == e.Value?.ToString())
-        {
-            await HandleValueChanged(currentValue);
-        }
+        // If you have a way to display validation errors, add that logic here.
+        // For simplicity, this example just returns whether the email is valid or not.
+        return result.IsValid;
     }
 }

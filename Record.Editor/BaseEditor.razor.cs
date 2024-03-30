@@ -6,7 +6,7 @@ public abstract partial class BaseEditor<T> : ComponentBase
   private T? _valueProxy;
 
   [CascadingParameter]
-  public bool IsReadOnly { get; set; } = true;
+  public bool IsReadOnly { get; set; }
     
   [Parameter]
   public T? Value

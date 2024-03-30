@@ -1,0 +1,26 @@
+﻿@page "/"
+<EditForm Model="@model" OnValidSubmit="@HandleValidSubmit">
+    <EmailEditor @bind-Value="@model.Email" />
+    <button type="submit">Submit</button>
+</EditForm>
+
+<div>
+    Current Email: @model.Email.Value
+</div>
+
+@code {
+    private Model model = new Model
+    {
+        Email = new Email("")
+    };
+
+    private class Model
+    {
+        public Email Email { get; set; }
+    }
+
+    private void HandleValidSubmit()
+    {
+        // Form submission logic here.
+    }
+}
