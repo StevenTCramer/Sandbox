@@ -1,0 +1,28 @@
+@page "/counter"
+@using BlazorApp8.Features
+@using MediatR
+@inherits TimeWarp.State.TimeWarpStateComponent
+@inject IMediator Mediator
+
+<PageTitle>Counter</PageTitle>
+
+<h1>Counter</h1>
+
+<p role="status">Current count: @CounterState.Count</p>
+
+<button class="btn btn-primary" @onclick="IncrementCount">Increment</button>
+<button class="btn btn-primary" @onclick="ResetCount">Reset</button>
+
+@code {
+    CounterState CounterState => GetState<CounterState>();
+
+    private async Task ResetCount()
+    {
+        await Mediator.Send(new CounterState.Reset.Action());
+    }
+
+    private async Task IncrementCount()
+    {
+        await Mediator.Send(new CounterState.IncrementBy.Action(4));
+    }
+}

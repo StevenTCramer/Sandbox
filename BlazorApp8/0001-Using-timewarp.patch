@@ -1,0 +1,275 @@
+From f419aa93ee9dccc9fd7479afa0b077707c563d5d Mon Sep 17 00:00:00 2001
+From: Daniel <email@email.com>
+Date: Mon, 17 Jun 2024 14:35:52 +0200
+Subject: [PATCH] Using timewarp
+
+---
+ BlazorApp8/BaseComponent.cs                | 10 ++++
+ BlazorApp8/BlazorApp8.csproj               |  8 +++
+ BlazorApp8/Components/Layout/NavMenu.razor | 11 +++-
+ BlazorApp8/Components/Pages/Counter.razor  | 22 +++++--
+ BlazorApp8/Features/CounterState.cs        | 68 ++++++++++++++++++++++
+ BlazorApp8/Program.cs                      | 30 ++++++++++
+ BlazorApp8/Properties/launchSettings.json  |  8 +--
+ 7 files changed, 146 insertions(+), 11 deletions(-)
+ create mode 100644 BlazorApp8/BaseComponent.cs
+ create mode 100644 BlazorApp8/Features/CounterState.cs
+
+diff --git a/BlazorApp8/BaseComponent.cs b/BlazorApp8/BaseComponent.cs
+new file mode 100644
+index 0000000..16162b9
+--- /dev/null
++++ b/BlazorApp8/BaseComponent.cs
+@@ -0,0 +1,10 @@
++using BlazorApp8.Features;
++using TimeWarp.State;
++
++namespace BlazorApp8
++{
++    public class BaseComponent : TimeWarpStateComponent
++    {
++        internal CounterState CounterState => GetState<CounterState>();
++    }
++}
+diff --git a/BlazorApp8/BlazorApp8.csproj b/BlazorApp8/BlazorApp8.csproj
+index 1b28a01..88da095 100644
+--- a/BlazorApp8/BlazorApp8.csproj
++++ b/BlazorApp8/BlazorApp8.csproj
+@@ -6,4 +6,12 @@
+     <ImplicitUsings>enable</ImplicitUsings>
+   </PropertyGroup>
+ 
++  <ItemGroup>
++    <PackageReference Include="Blazored.LocalStorage" Version="4.5.0" />
++    <PackageReference Include="Blazored.SessionStorage" Version="2.4.0" />
++    <PackageReference Include="MediatR" Version="12.3.0" />
++    <PackageReference Include="TimeWarp.State" Version="11.0.0-beta.37" />
++    <PackageReference Include="TimeWarp.State.Plus" Version="11.0.0-beta.37" />
++  </ItemGroup>
++
+ </Project>
+diff --git a/BlazorApp8/Components/Layout/NavMenu.razor b/BlazorApp8/Components/Layout/NavMenu.razor
+index bbba684..18e5d0c 100644
+--- a/BlazorApp8/Components/Layout/NavMenu.razor
++++ b/BlazorApp8/Components/Layout/NavMenu.razor
+@@ -1,4 +1,8 @@
+-﻿<div class="top-row ps-3 navbar navbar-dark">
++@using BlazorApp8.Features
++@using TimeWarp.State
++@inherits TimeWarp.State.TimeWarpStateComponent
++
++<div class="top-row ps-3 navbar navbar-dark">
+     <div class="container-fluid">
+         <a class="navbar-brand" href="">BlazorApp8</a>
+     </div>
+@@ -17,6 +21,7 @@
+         <div class="nav-item px-3">
+             <NavLink class="nav-link" href="counter">
+                 <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
++                <label> (@CounterState.Count)</label>
+             </NavLink>
+         </div>
+ 
+@@ -28,3 +33,7 @@
+     </nav>
+ </div>
+ 
++@code {
++    CounterState CounterState => GetState<CounterState>();
++
++}
+diff --git a/BlazorApp8/Components/Pages/Counter.razor b/BlazorApp8/Components/Pages/Counter.razor
+index ef23cb3..44d669c 100644
+--- a/BlazorApp8/Components/Pages/Counter.razor
++++ b/BlazorApp8/Components/Pages/Counter.razor
+@@ -1,18 +1,28 @@
+-﻿@page "/counter"
++@page "/counter"
++@using BlazorApp8.Features
++@using MediatR
++@inherits TimeWarp.State.TimeWarpStateComponent
++@inject IMediator Mediator
+ 
+ <PageTitle>Counter</PageTitle>
+ 
+ <h1>Counter</h1>
+ 
+-<p role="status">Current count: @currentCount</p>
++<p role="status">Current count: @CounterState.Count</p>
+ 
+-<button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
++<button class="btn btn-primary" @onclick="IncrementCount">Increment</button>
++<button class="btn btn-primary" @onclick="ResetCount">Reset</button>
+ 
+ @code {
+-    private int currentCount = 0;
++    CounterState CounterState => GetState<CounterState>();
+ 
+-    private void IncrementCount()
++    private async Task ResetCount()
+     {
+-        currentCount++;
++        await Mediator.Send(new CounterState.Reset.Action());
++    }
++
++    private async Task IncrementCount()
++    {
++        await Mediator.Send(new CounterState.IncrementBy.Action(4));
+     }
+ }
+diff --git a/BlazorApp8/Features/CounterState.cs b/BlazorApp8/Features/CounterState.cs
+new file mode 100644
+index 0000000..7d236a6
+--- /dev/null
++++ b/BlazorApp8/Features/CounterState.cs
+@@ -0,0 +1,68 @@
++using System.Text.Json.Serialization;
++using TimeWarp.Features.Persistence;
++using TimeWarp.State;
++
++namespace BlazorApp8.Features
++{
++    [PersistentState(PersistentStateMethod.SessionStorage)]
++    public partial class CounterState : State<CounterState>
++    {
++        public int Count { get; private set; }
++        public override void Initialize() => Count = 1;
++
++        public CounterState() { }
++        [JsonConstructor]
++        public CounterState(int aCount) => Count = aCount;
++    }
++
++    public partial class CounterState : State<CounterState>
++    {
++        public static class IncrementBy
++        {
++            public record Action(int Amount) : IAction;
++
++            public class Handler : ActionHandler<Action>
++            {
++                private readonly ILogger<Handler> logger;
++
++                public Handler(ILogger<Handler> logger, IStore aStore) : base(aStore)
++                {
++                    this.logger = logger;
++                }
++
++                CounterState CurrentCensorkorpsState => Store.GetState<CounterState>();
++
++                public override async Task Handle(Action aAction, CancellationToken aCancellationToken)
++                {
++                    // set state
++                    CurrentCensorkorpsState.Count += aAction.Amount;
++                    logger.LogInformation("Incremented by {Amount}", aAction.Amount);
++                }
++            }
++        }
++
++        public static class Reset
++        {
++            public record Action() : IAction;
++
++            public class Handler : ActionHandler<Action>
++            {
++                private readonly ILogger<Handler> logger;
++
++                public Handler(ILogger<Handler> logger, IStore aStore) : base(aStore)
++                {
++                    this.logger = logger;
++                }
++
++                CounterState CounterState => Store.GetState<CounterState>();
++
++                public override async Task Handle(Action aAction, CancellationToken aCancellationToken)
++                {
++                    // set state
++                    CounterState.Count = 0;
++                    logger.LogInformation("Reset");
++                }
++            }
++        }
++    }
++}
+diff --git a/BlazorApp8/Program.cs b/BlazorApp8/Program.cs
+index 8e477b7..22a1f1f 100644
+--- a/BlazorApp8/Program.cs
++++ b/BlazorApp8/Program.cs
+@@ -1,4 +1,12 @@
+ using BlazorApp8.Components;
++using Blazored.LocalStorage;
++using Blazored.SessionStorage;
++using MediatR;
++using MediatR.Pipeline;
++using System.Reflection;
++using TimeWarp.Features.Persistence;
++using TimeWarp.State;
++using TimeWarp.State.Plus;
+ 
+ var builder = WebApplication.CreateBuilder(args);
+ 
+@@ -6,6 +14,28 @@ var builder = WebApplication.CreateBuilder(args);
+ builder.Services.AddRazorComponents()
+     .AddInteractiveServerComponents();
+ 
++builder.Services.AddBlazoredSessionStorage();
++builder.Services.AddBlazoredLocalStorage();
++
++builder.Services.AddMediatR(cfg =>
++{
++    cfg.RegisterServicesFromAssemblyContaining(typeof(Program));
++    cfg.AutoRegisterRequestProcessors = true;
++});
++
++builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(RequestPostProcessorBehavior<,>));
++
++builder.Services.AddTimeWarpState(options =>
++{
++    options.Assemblies = [
++        typeof(Program).GetTypeInfo().Assembly,
++        typeof(TimeWarp.State.Plus.AssemblyMarker).GetTypeInfo().Assembly
++    ];
++});
++
++builder.Services.AddScoped<IPersistenceService, PersistenceService>();
++builder.Services.AddTransient(typeof(IRequestPostProcessor<,>), typeof(PersistentStatePostProcessor<,>));
++
+ var app = builder.Build();
+ 
+ // Configure the HTTP request pipeline.
+diff --git a/BlazorApp8/Properties/launchSettings.json b/BlazorApp8/Properties/launchSettings.json
+index cae80ba..e67dfcd 100644
+--- a/BlazorApp8/Properties/launchSettings.json
++++ b/BlazorApp8/Properties/launchSettings.json
+@@ -4,8 +4,8 @@
+       "windowsAuthentication": false,
+       "anonymousAuthentication": true,
+       "iisExpress": {
+-        "applicationUrl": "http://localhost:63615",
+-        "sslPort": 44366
++        "applicationUrl": "http://localhost:41490",
++        "sslPort": 44394
+       }
+     },
+     "profiles": {
+@@ -13,7 +13,7 @@
+         "commandName": "Project",
+         "dotnetRunMessages": true,
+         "launchBrowser": true,
+-        "applicationUrl": "http://localhost:5011",
++        "applicationUrl": "http://localhost:5152",
+         "environmentVariables": {
+           "ASPNETCORE_ENVIRONMENT": "Development"
+         }
+@@ -22,7 +22,7 @@
+         "commandName": "Project",
+         "dotnetRunMessages": true,
+         "launchBrowser": true,
+-        "applicationUrl": "https://localhost:7270;http://localhost:5011",
++        "applicationUrl": "https://localhost:7086;http://localhost:5152",
+         "environmentVariables": {
+           "ASPNETCORE_ENVIRONMENT": "Development"
+         }
+-- 
+2.32.0.windows.1
+
