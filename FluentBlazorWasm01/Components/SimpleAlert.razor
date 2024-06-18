@@ -1,0 +1,21 @@
+﻿<div>
+    <FluentCard role="alert">
+        <FluentLabel Typo=Typography.Body>
+            <strong>@Title</strong>
+            @ChildContent
+        </FluentLabel>
+    </FluentCard>
+    <fluent-card>
+        Whatever
+    </fluent-card>
+</div>
+
+
+@code
+{
+    [Parameter, EditorRequired] public string Title { get; set; } = null!;
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = null!;
+
+}

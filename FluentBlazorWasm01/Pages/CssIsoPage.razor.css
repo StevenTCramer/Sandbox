@@ -1,3 +1,6 @@
 h3 {
     color: blue;
 }
+::deep fluent-anchor.specialbg.hypertext::part(control) {
+    background-color: bisque;
+}

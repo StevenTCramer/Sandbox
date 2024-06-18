@@ -6,10 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FluentBlazorWasm01</title>
     <base href="/" />
-    <link href="_content/Microsoft.FluentUI.AspNetCore.Components/css/reboot.css" rel="stylesheet" />
+<!--    <link href="_content/Microsoft.FluentUI.AspNetCore.Components/css/reboot.css" rel="stylesheet" />-->
     <link rel="stylesheet" href="css/app.css" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
-    <link href="FluentBlazorWasm01.styles.css" rel="stylesheet" />
+<!--    <link href="FluentBlazorWasm01.styles.css" rel="stylesheet" />-->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            prefix: 'tw-',
+            corePlugins: {
+                preflight: false,
+            }
+        }
+    </script>
 </head>
 
 <body>

@@ -1,11 +1,11 @@
 ﻿@inherits LayoutComponentBase
-
-<FluentLayout>
-    <FluentHeader>
-        FluentBlazorWasm01
+<FluentLayout Id="yoyo">
+    <FluentHeader >
+        <span id="MySpan">FluentBlazorWasm01</span>
+        Yo
     </FluentHeader>
     <FluentStack Class="main" Orientation="Orientation.Horizontal" Width="100%">
-        <NavMenu />
+        <NavMenu/>
         <FluentBodyContent Class="body-content">
             <ErrorBoundary>
                 <ChildContent>
@@ -28,3 +28,12 @@
         </div>
     </FluentFooter>
 </FluentLayout>
+
+@code {
+    // private IReadOnlyDictionary<string, object>? MoreAttribs => new Dictionary<string, object>
+    // {
+    //     {
+    //         "class", "header"
+    //     }
+    // };
+}
